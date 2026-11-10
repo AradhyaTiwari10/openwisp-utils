@@ -19,6 +19,7 @@ from . import (
     _NEW_INSTALLATION_METRICS,
     _OS_DETAILS_RETURN_VALUE,
 )
+from .runner import original_post
 
 
 class TestOpenwispVersion(TestCase):
@@ -267,9 +268,7 @@ class TestOpenwispVersion(TestCase):
         self, mocked_error, mocked_getResponse, *args
     ):
         # Unmock post request from MockedRequestPostRunner
-        with patch.object(
-            utils.requests.Session, "post", new=utils.requests.Session._original_post
-        ):
+        with patch.object(utils.requests.Session, "post", new=original_post):
             tasks.send_usage_metrics.delay()
         self.assertEqual(len(mocked_getResponse.mock_calls), 11)
         mocked_error.assert_called_with(
@@ -306,9 +305,7 @@ class TestOpenwispVersion(TestCase):
         self, mocked_error, mocked_get_conn, *args
     ):
         # Unmock post request from MockedRequestPostRunner
-        with patch.object(
-            utils.requests.Session, "post", new=utils.requests.Session._original_post
-        ):
+        with patch.object(utils.requests.Session, "post", new=original_post):
             tasks.send_usage_metrics.delay()
         mocked_error.assert_called_with(
             "Collection of usage metrics failed, max retries exceeded."

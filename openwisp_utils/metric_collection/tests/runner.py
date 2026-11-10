@@ -6,6 +6,11 @@ from openwisp_utils.tests import TimeLoggingTestRunner
 
 success_response = requests.Response()
 success_response.status_code = 204
+# Captured at import time, before the runner mocks "post", so that tests
+# can restore it in any process regardless of the multiprocessing start
+# method (Python 3.14 defaults to "forkserver" on Linux, where test
+# workers no longer inherit attributes set on the class by the parent).
+original_post = requests.Session.post
 
 
 class MockRequestPostRunner(TimeLoggingTestRunner):
@@ -14,7 +19,6 @@ class MockRequestPostRunner(TimeLoggingTestRunner):
     pass
 
     def setup_databases(self, **kwargs):
-        utils.requests.Session._original_post = utils.requests.Session.post
         with patch.object(
             utils.requests.Session, "post", return_value=success_response
         ):

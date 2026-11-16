@@ -1,16 +1,17 @@
 #!/bin/bash
 set -e
 
-isort --extend-skip .venv --extend-skip venv --extend-skip env \
+isort --extend-skip-glob '.venv*' --extend-skip-glob 'venv*' --extend-skip env \
   --extend-skip .tox --extend-skip build .
 # Black excludes .venv, venv, and .tox by default. Extend its defaults to
-# cover env, ENV, and the repository-root build directory.
-black --extend-exclude '/(env|ENV)/|^/build/' .
+# cover version-suffixed venvs (e.g. .venv315), env, ENV, and the
+# repository-root build directory.
+black --extend-exclude '/(\.?venv[^/]*|env|ENV)/|^/build/' .
 
 files=()
 while IFS= read -r -d '' file; do
   files+=("$file")
-done < <(find . -path "./build" -prune -o -path "*/.*" -prune -o -path "*/venv/*" -prune \
+done < <(find . -path "./build" -prune -o -path "*/.*" -prune -o -path "*/venv*/*" -prune \
   -o -path "*/env/*" -prune -o -path "*/node_modules/*" -prune \
   -o -type f \( -name "*.py" -o -name "*.rst" \) -print0)
 if [ ${#files[@]} -gt 0 ]; then
@@ -22,7 +23,7 @@ if which prettier > /dev/null; then
   files=()
   while IFS= read -r -d '' file; do
     files+=("$file")
-  done < <(find . -path "./build" -prune -o -path "*/.venv/*" -prune -o -path "*/venv/*" -prune \
+  done < <(find . -path "./build" -prune -o -path "*/.venv*/*" -prune -o -path "*/venv*/*" -prune \
     -o -path "*/env/*" -prune -o -path "*/.tox/*" -prune -o -type f \
     \( -name "*.yml" -o -name "*.yaml" -o -name "*.md" -o -name "*.js" \
     -o -name "*.json" -o -name "*.css" \) -print0)

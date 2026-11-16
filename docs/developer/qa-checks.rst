@@ -54,7 +54,8 @@ Any unneeded checks can be skipped by passing ``--skip-<check-name>``.
 
 Local virtual environments are excluded from all QA and formatting
 commands. The excluded directory names are ``.venv``, ``venv``, ``env``,
-and ``.tox``.
+and ``.tox``, including version-suffixed names such as ``.venv315`` or
+``venv314``.
 
 The repository-root ``build/`` directory is excluded from all QA and
 formatting commands. The blank end-line check also excludes coverage

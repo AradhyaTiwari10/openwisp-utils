@@ -58,8 +58,8 @@ runcheckendline() {
     fi
   done < <(find . -path "./build" -prune -o -type f ! -path "*/*.egg-info/*" \
     ! -path "./.*" \
-    ! -path "*/.venv/*" \
-    ! -path "*/venv/*" \
+    ! -path "*/.venv*/*" \
+    ! -path "*/venv*/*" \
     ! -path "*/env/*" \
     ! -path "*/.tox/*" \
     ! -path "*/htmlcov/*" \
@@ -84,7 +84,7 @@ runprettiercheck() {
     # Collect null-delimited paths so formatter arguments preserve whitespace.
     while IFS= read -r -d '' file; do
       files+=("$file")
-    done < <(find . -path "./build" -prune -o -path "*/.venv/*" -prune -o -path "*/venv/*" -prune \
+    done < <(find . -path "./build" -prune -o -path "*/.venv*/*" -prune -o -path "*/venv*/*" -prune \
       -o -path "*/env/*" -prune -o -path "*/.tox/*" -prune -o -type f \
       \( "${patterns[@]}" \) -print0)
 
@@ -126,7 +126,7 @@ runcheckmigrations() {
 }
 
 runflake8() {
-  flake8 --extend-exclude=.venv,venv,env,.tox,build && echo "SUCCESS: Flake8 check successful!" ||
+  flake8 --extend-exclude='.venv*,venv*,env,.tox,build' && echo "SUCCESS: Flake8 check successful!" ||
     {
       echoerr "ERROR: Flake8 check failed!"
       FAILURE=1
@@ -140,7 +140,7 @@ runrstcheck() {
   while IFS= read -r -d '' file; do
     files+=("$file")
   done < <(find . -path "./build" -prune -o -path "*/.*" -prune -o -path "*/node_modules/*" -prune \
-    -o -path "*/venv/*" -prune -o -path "*/env/*" -prune \
+    -o -path "*/venv*/*" -prune -o -path "*/env/*" -prune \
     -o -type f \( -name "*.py" -o -name "*.rst" \) -print0)
   if [ ${#files[@]} -gt 0 ]; then
     local cmd=(docstrfmt --no-docstring-trailing-line -i -c -l 74 -s "=-~+^\"'.:")
@@ -155,7 +155,7 @@ runrstcheck() {
 }
 
 runisort() {
-  isort --check-only --diff --quiet --extend-skip .venv --extend-skip venv \
+  isort --check-only --diff --quiet --extend-skip-glob '.venv*' --extend-skip-glob 'venv*' \
     --extend-skip env --extend-skip .tox --extend-skip build . &&
     echo "SUCCESS: Isort check successful!" ||
     {
@@ -166,8 +166,9 @@ runisort() {
 
 runblack() {
   # Black excludes .venv, venv, and .tox by default. Extend its defaults to
-  # cover env, ENV, and the repository-root build directory.
-  black --check --diff --quiet --extend-exclude '/(env|ENV)/|^/build/' . &&
+  # cover version-suffixed venvs (e.g. .venv315), env, ENV, and the
+  # repository-root build directory.
+  black --check --diff --quiet --extend-exclude '/(\.?venv[^/]*|env|ENV)/|^/build/' . &&
     echo "SUCCESS: Black check successful!" ||
     {
       echoerr "ERROR: Black check failed! Hint: did you forget to run openwisp-qa-format?"

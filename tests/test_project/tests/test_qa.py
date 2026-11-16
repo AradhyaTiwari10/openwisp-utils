@@ -1,5 +1,6 @@
 import os
 import subprocess
+import sys
 import tempfile
 from os import path
 from unittest.mock import patch
@@ -377,7 +378,15 @@ class TestQa(TestCase):
                 f.write("body {}\n")
             excluded_prettier_files = []
             excluded_docstrfmt_files = []
-            for directory in (".venv", "venv", "env", ".tox", "build"):
+            for directory in (
+                ".venv",
+                ".venv315",
+                "venv",
+                "venv314",
+                "env",
+                ".tox",
+                "build",
+            ):
                 prettier_file = path.join(temp_dir, directory, "package", "file.css")
                 os.makedirs(path.dirname(prettier_file))
                 with open(prettier_file, "w") as f:
@@ -415,10 +424,10 @@ class TestQa(TestCase):
                 self.assertEqual(
                     isort_args,
                     [
-                        "--extend-skip",
-                        ".venv",
-                        "--extend-skip",
-                        "venv",
+                        "--extend-skip-glob",
+                        ".venv*",
+                        "--extend-skip-glob",
+                        "venv*",
                         "--extend-skip",
                         "env",
                         "--extend-skip",
@@ -433,7 +442,11 @@ class TestQa(TestCase):
             with self.subTest("Check that Black receives its environment exclusion"):
                 self.assertEqual(
                     black_args,
-                    ["--extend-exclude", "/(env|ENV)/|^/build/", "."],
+                    [
+                        "--extend-exclude",
+                        r"/(\.?venv[^/]*|env|ENV)/|^/build/",
+                        ".",
+                    ],
                 )
             with open(args_paths["prettier"]) as f:
                 prettier_args = f.read().splitlines()
@@ -563,7 +576,7 @@ class TestQa(TestCase):
             with open(path.join(args_dir, "flake8")) as f:
                 self.assertEqual(
                     f.read().splitlines(),
-                    ["--extend-exclude=.venv,venv,env,.tox,build"],
+                    ["--extend-exclude=.venv*,venv*,env,.tox,build"],
                 )
             with open(path.join(args_dir, "isort")) as f:
                 self.assertEqual(
@@ -572,10 +585,10 @@ class TestQa(TestCase):
                         "--check-only",
                         "--diff",
                         "--quiet",
-                        "--extend-skip",
-                        ".venv",
-                        "--extend-skip",
-                        "venv",
+                        "--extend-skip-glob",
+                        ".venv*",
+                        "--extend-skip-glob",
+                        "venv*",
                         "--extend-skip",
                         "env",
                         "--extend-skip",
@@ -593,7 +606,7 @@ class TestQa(TestCase):
                         "--diff",
                         "--quiet",
                         "--extend-exclude",
-                        "/(env|ENV)/|^/build/",
+                        r"/(\.?venv[^/]*|env|ENV)/|^/build/",
                         ".",
                     ],
                 )
@@ -607,6 +620,33 @@ class TestQa(TestCase):
                     self.assertIn(included, args)
                 with self.subTest(f"Check that {command} ignores root build files"):
                     self.assertNotIn(excluded, args)
+
+    def test_check_ignores_version_suffixed_virtual_environments(self):
+        script_path = path.abspath(path.join(path.dirname(__file__), "../../.."))
+        script_path = path.join(script_path, "openwisp-qa-check")
+        with tempfile.TemporaryDirectory() as temp_dir:
+            with open(path.join(temp_dir, "work.py"), "w") as f:
+                f.write("x = 1\n")
+            for directory in (".venv", ".venv315", "venv", "venv314"):
+                bad_file = path.join(temp_dir, directory, "lib", "bad.py")
+                os.makedirs(path.dirname(bad_file))
+                with open(bad_file, "w") as f:
+                    f.write("import sys,os\ny=( 1,2 )")
+            env = os.environ.copy()
+            env["PATH"] = f'{path.dirname(sys.executable)}:{env["PATH"]}'
+            result = subprocess.run(
+                [
+                    script_path,
+                    "--skip-checkmigrations",
+                    "--skip-checkcommit",
+                    "--skip-checkmakemigrations",
+                ],
+                cwd=temp_dir,
+                env=env,
+                capture_output=True,
+                text=True,
+            )
+            self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
 
     def test_checkendline_handles_filenames_with_spaces(self):
         script_path = path.abspath(path.join(path.dirname(__file__), "../../.."))
